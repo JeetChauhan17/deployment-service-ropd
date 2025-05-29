@@ -15,7 +15,9 @@ const BASE_DOMAIN = 'web.net';
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Configure multer for folder upload
 const storage = multer.diskStorage({
@@ -70,7 +72,7 @@ app.use((req, res, next) => {
     }
 });
 
-// API Endpoints
+// API Routes
 app.post('/upload', upload.array('files'), async (req, res) => {
     try {
         const interval = parseInt(req.body.interval);
