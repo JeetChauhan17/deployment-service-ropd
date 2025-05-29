@@ -1,24 +1,30 @@
 {
   "name": "control-panel",
   "version": "1.0.0",
+  "description": "A web application for deploying website folders with automatic redeployment capabilities",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "A control panel for deploying website folders to Azure Storage",
   "dependencies": {
     "@azure/storage-blob": "^12.17.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "multer": "^1.4.5-lts.1",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.2"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "vite": "^5.0.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }
