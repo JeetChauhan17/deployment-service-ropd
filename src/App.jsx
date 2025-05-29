@@ -77,37 +77,37 @@ function App() {
   }, [])
 
   return (
-    <div className="container mt-5">
-      <h1 className="text-center mb-4">Control Panel Deployment System</h1>
+    <div className="app-container">
+      <h1 className="app-title">Control Panel Deployment System</h1>
       
       {latestUrl && (
-        <div className="alert alert-success" role="alert">
+        <div className="latest-url-banner">
           Latest Deployment URL: <a href={latestUrl} target="_blank" rel="noopener noreferrer">{latestUrl}</a>
         </div>
       )}
 
-      <div className="row">
-        <div className="col-md-6">
-          <div className="card">
-            <div className="card-body">
+      <div className="form-row">
+        <div className="form-column">
+          <div className="form-card">
+            <div className="card-content">
               <h5 className="card-title">Upload Website Folder</h5>
               <form onSubmit={handleDeploy}>
-                <div className="mb-3">
+                <div className="form-group">
                   <label htmlFor="files" className="form-label">Select Files</label>
                   <input
                     type="file"
-                    className="form-control"
+                    className="form-input"
                     id="files"
                     multiple
                     onChange={handleFileChange}
                     required
                   />
                 </div>
-                <div className="mb-3">
+                <div className="form-group">
                   <label htmlFor="interval" className="form-label">Redeployment Interval (minutes)</label>
                   <input
                     type="number"
-                    className="form-control"
+                    className="form-input"
                     id="interval"
                     value={interval}
                     onChange={handleIntervalChange}
@@ -117,7 +117,7 @@ function App() {
                 </div>
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className="btn deploy-btn"
                   disabled={isDeploying}
                 >
                   {isDeploying ? 'Deploying...' : 'Deploy'}
@@ -127,16 +127,16 @@ function App() {
           </div>
         </div>
 
-        <div className="col-md-6">
-          <div className="card">
-            <div className="card-body">
+        <div className="form-column">
+          <div className="form-card">
+            <div className="card-content">
               <h5 className="card-title">Add More Files</h5>
               <form onSubmit={handleAddFiles}>
-                <div className="mb-3">
+                <div className="form-group">
                   <label htmlFor="addFiles" className="form-label">Select Additional Files</label>
                   <input
                     type="file"
-                    className="form-control"
+                    className="form-input"
                     id="addFiles"
                     multiple
                     onChange={handleFileChange}
@@ -145,7 +145,7 @@ function App() {
                 </div>
                 <button
                   type="submit"
-                  className="btn btn-success"
+                  className="btn add-files-btn"
                   disabled={isDeploying}
                 >
                   {isDeploying ? 'Adding Files...' : 'Add Files'}
