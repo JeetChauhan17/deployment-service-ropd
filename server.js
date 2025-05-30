@@ -39,7 +39,8 @@ const upload = multer({ storage: storage });
 let deploymentState = {
     latestUrl: '',
     interval: null,
-    cronJob: null
+    cronJob: null,
+    nextDeployTime: null
 };
 
 // Subdomain middleware
@@ -72,37 +73,68 @@ app.use((req, res, next) => {
     }
 });
 
-// API Routes
-app.post('/upload', upload.array('files'), async (req, res) => {
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+});
+
+// Deploy endpoint
+app.post('/deploy', async (req, res) => {
+    try {
+        const deploymentUrl = await deployToVercel();
+        res.json({ 
+            success: true, 
+            url: deploymentUrl,
+            message: 'Deployment successful'
+        });
+    } catch (error) {
+        console.error('Deployment failed:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message,
+            message: 'Deployment failed'
+        });
+    }
+});
+
+// Serve the main page
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
+
+app.post('/upload', upload.any(), async (req, res) => {
     try {
         const interval = parseInt(req.body.interval);
         if (isNaN(interval) || interval < 1) {
             return res.status(400).json({ error: 'Invalid interval' });
         }
+        if (deploymentState.cronJob) stopCronJob(deploymentState.cronJob);
 
-        // Stop existing cron job if any
-        if (deploymentState.cronJob) {
-            stopCronJob(deploymentState.cronJob);
-        }
-
-        // Initial deployment
         const url = await deployToVercel();
         deploymentState.latestUrl = url;
         deploymentState.interval = interval;
+        deploymentState.nextDeployTime = Date.now() + interval * 60 * 1000;
 
-        // Start new cron job
         deploymentState.cronJob = startCronJob(interval, async () => {
             const newUrl = await deployToVercel();
             deploymentState.latestUrl = newUrl;
+            deploymentState.nextDeployTime = Date.now() + interval * 60 * 1000;
         });
 
-        res.json({ 
-            message: 'Deployment successful',
-            url: deploymentState.latestUrl
-        });
+        res.json({ message: 'Deployment successful', url: deploymentState.latestUrl });
     } catch (error) {
-        console.error('Deployment error:', error);
-        res.status(500).json({ error: 'Deployment failed' });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/add-files', upload.any(), async (req, res) => {
+    try {
+        const url = await deployToVercel();
+        deploymentState.latestUrl = url;
+        deploymentState.nextDeployTime = deploymentState.interval ? Date.now() + deploymentState.interval * 60 * 1000 : null;
+        res.json({ message: 'Files added and deployed successfully', url: deploymentState.latestUrl });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -110,21 +142,15 @@ app.get('/latest-url', (req, res) => {
     res.json({ url: deploymentState.latestUrl });
 });
 
-app.post('/add-files', upload.array('files'), async (req, res) => {
-    try {
-        const url = await deployToVercel();
-        deploymentState.latestUrl = url;
-        res.json({ 
-            message: 'Files added and deployed successfully',
-            url: deploymentState.latestUrl
-        });
-    } catch (error) {
-        console.error('Add files error:', error);
-        res.status(500).json({ error: 'Failed to add files' });
-    }
+app.get('/next-deploy', (req, res) => {
+    res.json({
+        nextDeployTime: deploymentState.nextDeployTime,
+        interval: deploymentState.interval
+    });
 });
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
     console.log(`Example deployment URL: http://${generateRandomSubdomain()}.${BASE_DOMAIN}:${port}`);
+    console.log('Ready to handle deployments');
 }); 

@@ -12,24 +12,26 @@ yarn-error.log
 # Build output
 dist/
 build/
-.temp/
+.next/
 
-# IDE and editor files
-.idea/
+# Temporary files
+temp/
+repo/
+deployed/
+
+# IDE files
 .vscode/
+.idea/
 *.swp
 *.swo
 
-# OS generated files
+# OS files
 .DS_Store
+Thumbs.db
+
+# OS generated files
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
-ehthumbs.db
-Thumbs.db
-
-# Project specific
-repo/
-deployed/
-temp/ 
+ehthumbs.db 

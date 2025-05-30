@@ -3,12 +3,9 @@
   "version": "1.0.0",
   "description": "A web application for deploying website folders with automatic redeployment capabilities",
   "main": "server.js",
-  "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -21,5 +18,8 @@
     "express": "^4.18.2",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }
