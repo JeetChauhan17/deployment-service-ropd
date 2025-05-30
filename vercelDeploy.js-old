@@ -1,4 +1,3 @@
-
 const { exec } = require("child_process")
 const path = require("path")
 const fs = require("fs").promises
@@ -119,8 +118,6 @@ function fixImportStatements(content) {
   })
 
   // Fix any malformed import statements with missing quotes
-  //it took me 55 minutes to find this on stack overflow -_-
-
   content = content.replace(/import\s+(\w+)\s+from\s+['"]([^'"]*?)['"]?$/gm, (match, varName, importPath) => {
     // Ensure the import statement has proper quotes
     return `import ${varName} from '${importPath}'`
@@ -139,85 +136,110 @@ async function prepareViteProject(tempDir) {
   console.log("Preparing Vite project structure...")
   const files = await fs.readdir(tempDir)
 
-  // Create src directory if it doesn't exist
+  // Check if we need to create a src directory
   if (!files.includes("src")) {
     console.log("Creating src directory for Vite project")
     await fs.mkdir(path.join(tempDir, "src"), { recursive: true })
-  }
 
-  // Create src/assets directory
-  console.log("Creating src/assets directory")
-  await fs.mkdir(path.join(tempDir, "src", "assets"), { recursive: true })
+    // Move key files to src directory
+    const filesToMove = ["main.jsx", "main.tsx", "App.jsx", "App.tsx", "App.css", "index.css"]
 
-  // Move SVG files to src/assets
-  const svgFiles = files.filter((file) => file.endsWith(".svg"))
-  for (const svgFile of svgFiles) {
-    console.log(`Moving ${svgFile} to src/assets`)
-    await fs.copyFile(path.join(tempDir, svgFile), path.join(tempDir, "src", "assets", svgFile))
-    await fs.unlink(path.join(tempDir, svgFile))
-  }
+    for (const file of filesToMove) {
+      if (files.includes(file)) {
+        console.log(`Moving ${file} to src directory`)
 
-  // Move key files to src directory
-  const filesToMove = ["main.jsx", "main.tsx", "App.jsx", "App.tsx", "App.css", "index.css"]
-  for (const file of filesToMove) {
-    if (files.includes(file)) {
-      console.log(`Moving ${file} to src directory`)
+        // Read the file content first
+        let content = await fs.readFile(path.join(tempDir, file), "utf8")
 
-      // Read the file content first
-      let content = await fs.readFile(path.join(tempDir, file), "utf8")
-
-      // Fix import statements if it's a JS/JSX file
-      if (file.endsWith(".jsx") || file.endsWith(".js") || file.endsWith(".tsx") || file.endsWith(".ts")) {
-        console.log(`Fixing import statements in ${file}`)
-        content = fixImportStatements(content)
-
-        // Special handling for App.jsx to fix asset imports
-        if (file === "App.jsx" || file === "App.tsx") {
-          // Fix import paths for SVG files
-          content = content.replace(/from ['"]\.\/assets\/([^'"]+)['"]/, "from './assets/$1'")
-          content = content.replace(/from ['"]\/([^'"]+\.svg)['"]/, "from './assets/$1'")
-
-          // Fix specific import for react.svg and vite.svg
-          content = content.replace(/from ['"]\.\/react\.svg['"]/, "from './assets/react.svg'")
-          content = content.replace(/from ['"]\.\/vite\.svg['"]/, "from './assets/vite.svg'")
-          content = content.replace(/from ['"]\/vite\.svg['"]/, "from './assets/vite.svg'")
-          content = content.replace(/from ['"]\/react\.svg['"]/, "from './assets/react.svg'")
+        // Fix import statements if it's a JS/JSX file
+        if (file.endsWith(".jsx") || file.endsWith(".js") || file.endsWith(".tsx") || file.endsWith(".ts")) {
+          console.log(`Fixing import statements in ${file}`)
+          content = fixImportStatements(content)
         }
+
+        // Write the fixed content to the new location
+        await fs.writeFile(path.join(tempDir, "src", file), content)
+
+        // Remove the original file
+        await fs.unlink(path.join(tempDir, file))
+      }
+    }
+
+    // Handle public directory and assets
+    if (files.includes("public")) {
+      console.log("Public directory found - keeping it in root")
+      // Public directory should stay in root for Vite
+    }
+
+    // Move assets directory if it exists in root
+    if (files.includes("assets")) {
+      console.log("Moving assets directory to src")
+      await fs.mkdir(path.join(tempDir, "src", "assets"), { recursive: true })
+
+      // Copy all files from assets to src/assets
+      const assetFiles = await fs.readdir(path.join(tempDir, "assets"))
+      for (const assetFile of assetFiles) {
+        await fs.copyFile(path.join(tempDir, "assets", assetFile), path.join(tempDir, "src", "assets", assetFile))
       }
 
-      // Write the fixed content to the new location
-      await fs.writeFile(path.join(tempDir, "src", file), content)
-
-      // Remove the original file
-      await fs.unlink(path.join(tempDir, file))
-    }
-  }
-
-  // Handle assets directory if it exists in root
-  if (files.includes("assets")) {
-    console.log("Moving assets directory content to src/assets")
-    const assetFiles = await fs.readdir(path.join(tempDir, "assets"))
-    for (const assetFile of assetFiles) {
-      await fs.copyFile(path.join(tempDir, "assets", assetFile), path.join(tempDir, "src", "assets", assetFile))
-    }
-    await fs.rm(path.join(tempDir, "assets"), { recursive: true, force: true })
-  }
-
-  // Check if we need to update index.html
-  if (files.includes("index.html")) {
-    let indexContent = await fs.readFile(path.join(tempDir, "index.html"), "utf8")
-
-    // Update script src if needed
-    if (indexContent.includes('src="main.jsx"') || indexContent.includes('src="./main.jsx"')) {
-      console.log("Updating index.html to reference src/main.jsx")
-      indexContent = indexContent.replace(/src="\.?\/main\.jsx"/g, 'src="/src/main.jsx"')
-      await fs.writeFile(path.join(tempDir, "index.html"), indexContent)
+      // Remove original assets directory
+      await fs.rm(path.join(tempDir, "assets"), { recursive: true, force: true })
     }
 
-    if (indexContent.includes('src="main.tsx"') || indexContent.includes('src="./main.tsx"')) {
-      console.log("Updating index.html to reference src/main.tsx")
-      indexContent = indexContent.replace(/src="\.?\/main\.tsx"/g, 'src="/src/main.tsx"')
-      await fs.writeFile(path.join(tempDir, "index.html"), indexContent)
+    // Move any SVG files that might be in the root to public
+    const svgFiles = files.filter((file) => file.endsWith(".svg"))
+    if (svgFiles.length > 0) {
+      console.log("Moving SVG files to public directory")
+
+      // Ensure public directory exists
+      if (!files.includes("public")) {
+        await fs.mkdir(path.join(tempDir, "public"), { recursive: true })
+      }
+
+      for (const svgFile of svgFiles) {
+        console.log(`Moving ${svgFile} to public directory`)
+        await fs.copyFile(path.join(tempDir, svgFile), path.join(tempDir, "public", svgFile))
+        await fs.unlink(path.join(tempDir, svgFile))
+      }
+    }
+
+    // Check if we need to update index.html
+    if (files.includes("index.html")) {
+      let indexContent = await fs.readFile(path.join(tempDir, "index.html"), "utf8")
+
+      // Update script src if needed
+      if (indexContent.includes('src="main.jsx"') || indexContent.includes('src="./main.jsx"')) {
+        console.log("Updating index.html to reference src/main.jsx")
+        indexContent = indexContent.replace(/src="\.?\/main\.jsx"/g, 'src="/src/main.jsx"')
+        await fs.writeFile(path.join(tempDir, "index.html"), indexContent)
+      }
+
+      if (indexContent.includes('src="main.tsx"') || indexContent.includes('src="./main.tsx"')) {
+        console.log("Updating index.html to reference src/main.tsx")
+        indexContent = indexContent.replace(/src="\.?\/main\.tsx"/g, 'src="/src/main.tsx"')
+        await fs.writeFile(path.join(tempDir, "index.html"), indexContent)
+      }
+    }
+
+    // Update App.jsx to fix asset imports after moving files
+    const appJsxPath = path.join(tempDir, "src", "App.jsx")
+    if (
+      await fs
+        .access(appJsxPath)
+        .then(() => true)
+        .catch(() => false)
+    ) {
+      let appContent = await fs.readFile(appJsxPath, "utf8")
+
+      // Fix imports to reference public assets correctly
+      appContent = appContent.replace(/from\s+['"]\.\/assets\/([^'"]+)['"]/g, "from './assets/$1'")
+      appContent = appContent.replace(/from\s+['"]\/([^'"]+\.svg)['"]/g, "from '/$1'")
+
+      // Fix any remaining malformed imports
+      appContent = fixImportStatements(appContent)
+
+      await fs.writeFile(appJsxPath, appContent)
+      console.log("Updated App.jsx asset imports")
     }
   }
 
@@ -273,54 +295,6 @@ export default defineConfig({
     }
 
     await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2))
-  }
-
-  // Final check for App.jsx to ensure asset imports are correct
-  const appJsxPath = path.join(tempDir, "src", "App.jsx")
-  if (
-    await fs
-      .access(appJsxPath)
-      .then(() => true)
-      .catch(() => false)
-  ) {
-    const appContent = await fs.readFile(appJsxPath, "utf8")
-    console.log("Performing final check on App.jsx imports")
-
-    // Create a debug file to see what's in App.jsx
-    await fs.writeFile(path.join(tempDir, "app-debug.txt"), appContent)
-
-    // Ensure all SVG imports point to the correct location
-    if (appContent.includes("./assets/react.svg") || appContent.includes("/react.svg")) {
-      // Check if the file exists in src/assets
-      const reactSvgExists = await fs
-        .access(path.join(tempDir, "src", "assets", "react.svg"))
-        .then(() => true)
-        .catch(() => false)
-
-      if (!reactSvgExists) {
-        console.log("Creating placeholder react.svg")
-        const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <circle cx="50" cy="50" r="40" stroke="black" stroke-width="3" fill="blue" />
-</svg>`
-        await fs.writeFile(path.join(tempDir, "src", "assets", "react.svg"), placeholderSvg)
-      }
-    }
-
-    if (appContent.includes("./assets/vite.svg") || appContent.includes("/vite.svg")) {
-      // Check if the file exists in src/assets
-      const viteSvgExists = await fs
-        .access(path.join(tempDir, "src", "assets", "vite.svg"))
-        .then(() => true)
-        .catch(() => false)
-
-      if (!viteSvgExists) {
-        console.log("Creating placeholder vite.svg")
-        const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <polygon points="50,10 90,90 10,90" stroke="black" stroke-width="3" fill="yellow" />
-</svg>`
-        await fs.writeFile(path.join(tempDir, "src", "assets", "vite.svg"), placeholderSvg)
-      }
-    }
   }
 
   console.log("Vite project preparation complete")
