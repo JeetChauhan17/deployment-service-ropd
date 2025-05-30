@@ -11,8 +11,8 @@
 
 1. **Clone the repository**:
    \`\`\`bash
-   git clone https://github.com/JeetChauhan17/ropd-testing.git
-   cd ropd-testing
+   git clone https://github.com/Tanish0x/ropd.git
+   cd ropd
    \`\`\`
 
 2. **Install dependencies**:
